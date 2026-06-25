@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SafeWatch AI — Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-base: #0a0f1a;
+    --bg-surface: #111827;
+    --bg-card: #1a2236;
+    --bg-card2: #141c2e;
+    --border: #1e2d45;
+    --border-bright: #243554;
+    --text-primary: #e8edf5;
+    --text-secondary: #7c8fa8;
+    --text-muted: #4a5a72;
+    --accent: #3b82f6;
+    --red: #ef4444;
+    --orange: #f97316;
+    --yellow: #eab308;
+    --green: #22c55e;
+    --red-bg: rgba(239,68,68,0.08);
+    --orange-bg: rgba(249,115,22,0.08);
+    --yellow-bg: rgba(234,179,8,0.08);
+    --green-bg: rgba(34,197,94,0.06);
+    --red-border: rgba(239,68,68,0.35);
+    --orange-border: rgba(249,115,22,0.3);
+    --yellow-border: rgba(234,179,8,0.3);
+    --green-border: rgba(34,197,94,0.25);
+  }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--red);
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+    50% { opacity: 0.8; box-shadow: 0 0 0 5px rgba(239,68,68,0); }
+  }
+  .live-badge {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(239,68,68,0.12); border: 1px solid var(--red-border);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600; color: var(--red); letter-spacing: 0.5px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse-dot 1.5s infinite; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .system-time { font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+  /* DOMAIN SELECTOR */
+  .domain-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .domain-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-right: 4px; white-space: nowrap; }
+  .domain-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border-bright);
+    background: transparent; color: var(--text-secondary);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .domain-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+  .domain-btn.active { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.5); color: #60a5fa; }
+  .domain-icon { font-size: 14px; }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--border); border-bottom: 1px solid var(--border);
+  }
+  .stat-cell {
+    background: var(--bg-surface); padding: 12px 20px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+  .stat-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat-value.red { color: var(--red); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.blue { color: var(--accent); }
+  .stat-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 52px - 40px - 65px);
+    min-height: 500px;
+  }
+
+  /* CAMERA FEED */
+  .camera-panel {
+    background: #000;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 320px;
+  }
+  .camera-feed-sim {
+    width: 100%; height: 100%;
+    background: #0a0a0a;
+    position: relative;
+    overflow: hidden;
+  }
+  .feed-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .feed-scene {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Animated scene elements */
+  .scene-person {
+    position: absolute;
+    width: 28px; height: 60px;
+    border: 2px solid var(--green);
+    border-radius: 3px;
+    animation: walk 6s ease-in-out infinite;
+  }
+  .scene-person::before {
+    content: '';
+    position: absolute;
+    top: -18px; left: 50%; transform: translateX(-50%);
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--green);
+  }
+  .scene-person.threat {
+    border-color: var(--red);
+    animation: walk-threat 4s ease-in-out infinite;
+  }
+  .scene-person.threat::before { border-color: var(--red); }
+  @keyframes walk {
+    0%, 100% { left: 20%; opacity: 0.7; }
+    50% { left: 60%; opacity: 1; }
+  }
+  @keyframes walk-threat {
+    0%, 100% { left: 65%; opacity: 0.9; }
+    50% { left: 75%; opacity: 1; }
+  }
+
+  .bbox-alert {
+    position: absolute;
+    border: 2px solid var(--red);
+    border-radius: 2px;
+    animation: bbox-flash 1.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes bbox-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .bbox-label {
+    position: absolute;
+    top: -22px; left: -1px;
+    background: var(--red);
+    color: #fff; font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: 2px 2px 2px 0;
+    white-space: nowrap;
+  }
+  .bbox-normal {
+    position: absolute;
+    border: 1.5px solid var(--green);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  .bbox-normal-label {
+    position: absolute;
+    top: -20px; left: -1px;
+    background: var(--green);
+    color: #000; font-size: 10px; font-weight: 600;
+    padding: 2px 5px; border-radius: 2px 2px 2px 0;
+    white-space: nowrap;
+  }
+
+  /* Camera overlays */
+  .cam-overlay-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+  }
+  .cam-label { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 500; letter-spacing: 0.5px; }
+  .cam-fps { font-size: 10px; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
+  .cam-overlay-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  }
+  .cam-domain-badge {
+    background: rgba(59,130,246,0.25); border: 1px solid rgba(59,130,246,0.4);
+    color: #60a5fa; font-size: 10px; font-weight: 600; letter-spacing: 0.5px;
+    padding: 3px 8px; border-radius: 3px;
+  }
+  .cam-model-badge {
+    font-size: 10px; color: rgba(255,255,255,0.35);
+  }
+  .scanline {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: rgba(59,130,246,0.15);
+    animation: scan 4s linear infinite;
+  }
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+
+  /* ALERTS PANEL */
+  .alerts-panel {
+    background: var(--bg-card2);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-title { font-size: 12px; font-weight: 600; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.6px; }
+  .panel-count {
+    background: var(--red-bg); border: 1px solid var(--red-border);
+    color: var(--red); font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 10px;
+  }
+  .alerts-list { overflow-y: auto; flex: 1; }
+  .alert-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: default;
+  }
+  .alert-item:hover { background: rgba(255,255,255,0.02); }
+  .alert-item.critical { border-left: 3px solid var(--red); background: var(--red-bg); }
+  .alert-item.high { border-left: 3px solid var(--orange); background: var(--orange-bg); }
+  .alert-item.medium { border-left: 3px solid var(--yellow); background: var(--yellow-bg); }
+  .alert-item.low { border-left: 3px solid var(--green); background: var(--green-bg); }
+  .alert-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+  .severity-badge {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+    padding: 2px 7px; border-radius: 3px;
+  }
+  .severity-badge.critical { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid var(--red-border); }
+  .severity-badge.high { background: rgba(249,115,22,0.2); color: #fb923c; border: 1px solid var(--orange-border); }
+  .severity-badge.medium { background: rgba(234,179,8,0.2); color: #facc15; border: 1px solid var(--yellow-border); }
+  .severity-badge.low { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid var(--green-border); }
+  .alert-time { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .alert-summary { font-size: 12px; color: var(--text-primary); line-height: 1.4; margin-bottom: 4px; }
+  .alert-action { font-size: 11px; color: var(--text-secondary); }
+  .alert-action strong { color: var(--accent); font-weight: 500; }
+  .alert-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .alert-domain-tag {
+    font-size: 10px; color: var(--text-muted);
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border-bright);
+    padding: 1px 6px; border-radius: 3px;
+  }
+  .alert-conf { font-size: 10px; color: var(--text-muted); }
+
+  /* INCIDENT LOG */
+  .incident-panel {
+    background: var(--bg-card2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .incident-log { overflow-y: auto; flex: 1; }
+  .log-row {
+    display: grid;
+    grid-template-columns: 80px 90px 1fr 80px;
+    gap: 12px;
+    align-items: center;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    transition: background 0.1s;
+  }
+  .log-row:hover { background: rgba(255,255,255,0.02); }
+  .log-row.header {
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    background: var(--bg-surface); font-weight: 600;
+    position: sticky; top: 0; z-index: 2;
+  }
+  .log-time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .log-domain { color: var(--text-secondary); }
+  .log-summary { color: var(--text-primary); line-height: 1.35; }
+  .log-severity { text-align: right; }
+
+  /* AI REASONING panel */
+  .reasoning-panel {
+    background: var(--bg-card2);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .reasoning-content { padding: 14px 16px; overflow-y: auto; flex: 1; }
+  .reasoning-label {
+    font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px;
+    margin-bottom: 8px;
+  }
+  .reasoning-box {
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border-bright);
+    border-radius: 6px; padding: 12px; margin-bottom: 12px;
+  }
+  .reasoning-title { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+  .reasoning-value { font-size: 12px; color: var(--text-primary); line-height: 1.4; }
+  .conf-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 2px; background: var(--green); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 4px; }
+
+  /* Responsive fix */
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      SafeWatch AI
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="system-time" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- DOMAIN SELECTOR -->
+<div class="domain-bar">
+  <span class="domain-label">Domain</span>
+  <button class="domain-btn active" onclick="setDomain(this, 'Construction')">🏗️ Construction</button>
+  <button class="domain-btn" onclick="setDomain(this, 'School')">🏫 School</button>
+  <button class="domain-btn" onclick="setDomain(this, 'Elderly Care')">👴 Elderly Care</button>
+  <button class="domain-btn" onclick="setDomain(this, 'Public Space')">🌆 Public Space</button>
+  <button class="domain-btn" onclick="setDomain(this, 'All Domains')">⬡ All Domains</button>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-cell">
+    <div class="stat-label">Critical alerts</div>
+    <div class="stat-value red" id="stat-critical">3</div>
+    <div class="stat-sub">last 10 min</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Total incidents</div>
+    <div class="stat-value blue" id="stat-total">14</div>
+    <div class="stat-sub">this session</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">Avg. response time</div>
+    <div class="stat-value green">1.8s</div>
+    <div class="stat-sub">detection → alert</div>
+  </div>
+  <div class="stat-cell">
+    <div class="stat-label">False positive est.</div>
+    <div class="stat-value orange">12%</div>
+    <div class="stat-sub">via LLM filtering</div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid">
+
+  <!-- CAMERA FEED -->
+  <div class="camera-panel">
+    <div class="camera-feed-sim">
+      <div class="feed-grid"></div>
+      <div class="scanline"></div>
+
+      <!-- Normal person bbox -->
+      <div class="bbox-normal" style="left: 18%; top: 25%; width: 52px; height: 110px;">
+        <div class="bbox-normal-label">person 0.91</div>
+      </div>
+
+      <!-- Alert bbox - no helmet -->
+      <div class="bbox-alert" style="left: 55%; top: 20%; width: 60px; height: 120px;" id="main-alert-box">
+        <div class="bbox-label" id="main-alert-label">NO HELMET 0.87</div>
+      </div>
+
+      <!-- Simulated person shapes -->
+      <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 640 360" preserveAspectRatio="none">
+        <!-- Person 1 (safe) - with helmet -->
+        <ellipse cx="142" cy="105" rx="12" ry="12" fill="none" stroke="#22c55e" stroke-width="1.5" opacity="0.6"/>
+        <rect x="135" y="118" width="16" height="30" rx="2" fill="none" stroke="#22c55e" stroke-width="1.5" opacity="0.6"/>
+        <!-- Helmet -->
+        <path d="M130 105 Q142 92 154 105" fill="rgba(34,197,94,0.3)" stroke="#22c55e" stroke-width="1.5"/>
+
+        <!-- Person 2 (threat) - no helmet, at bbox location -->
+        <ellipse cx="378" cy="96" rx="13" ry="13" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.9"/>
+        <rect x="370" y="110" width="18" height="32" rx="2" fill="none" stroke="#ef4444" stroke-width="1.5" opacity="0.9"/>
+        <!-- Exclamation -->
+        <text x="379" y="88" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="bold" opacity="0.9">!</text>
+
+        <!-- Floor markers -->
+        <line x1="0" y1="290" x2="640" y2="290" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="0" y1="200" x2="640" y2="200" stroke="rgba(255,255,255,0.02)" stroke-width="1"/>
+
+        <!-- Zone label -->
+        <text x="320" y="352" text-anchor="middle" fill="rgba(255,255,255,0.15)" font-size="9" letter-spacing="1">CONSTRUCTION ZONE — CAMERA 02</text>
+      </svg>
+
+      <div class="cam-overlay-top">
+        <span class="cam-label" id="cam-label">CAM-02 · CONSTRUCTION SITE · ZONE A</span>
+        <span class="cam-fps">29.97 fps · YOLOv8n</span>
+      </div>
+      <div class="cam-overlay-bottom">
+        <span class="cam-domain-badge" id="cam-domain-badge">CONSTRUCTION</span>
+        <span class="cam-model-badge">LLaMA 3.3 70B · Groq</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALERTS PANEL -->
+  <div class="alerts-panel">
+    <div class="panel-header">
+      <span class="panel-title">Active Alerts</span>
+      <span class="panel-count" id="alert-count">3 CRITICAL</span>
+    </div>
+    <div class="alerts-list" id="alerts-list">
+
+      <div class="alert-item critical">
+        <div class="alert-header">
+          <span class="severity-badge critical">CRITICAL</span>
+          <span class="alert-time" id="time-1">14:32:07</span>
+        </div>
+        <div class="alert-summary">Worker without safety helmet detected within 2m of active crane operation.</div>
+        <div class="alert-action"><strong>Action:</strong> Notify site supervisor immediately. Halt crane operation.</div>
+        <div class="alert-meta">
+          <span class="alert-domain-tag">Construction</span>
+          <span class="alert-conf">conf 0.87 · FP est. 6%</span>
+        </div>
+      </div>
+
+      <div class="alert-item high">
+        <div class="alert-header">
+          <span class="severity-badge high">HIGH</span>
+          <span class="alert-time" id="time-2">14:31:44</span>
+        </div>
+        <div class="alert-summary">Person detected in restricted machinery zone without PPE vest for 18 seconds.</div>
+        <div class="alert-action"><strong>Action:</strong> Issue PA announcement. Escort worker to safety.</div>
+        <div class="alert-meta">
+          <span class="alert-domain-tag">Construction</span>
+          <span class="alert-conf">conf 0.79 · FP est. 11%</span>
+        </div>
+      </div>
+
+      <div class="alert-item critical">
+        <div class="alert-header">
+          <span class="severity-badge critical">CRITICAL</span>
+          <span class="alert-time" id="time-3">14:30:21</span>
+        </div>
+        <div class="alert-summary">Unauthorized individual detected at Site Entrance without any PPE or ID badge.</div>
+        <div class="alert-action"><strong>Action:</strong> Security to intercept. Review entry logs immediately.</div>
+        <div class="alert-meta">
+          <span class="alert-domain-tag">Construction</span>
+          <span class="alert-conf">conf 0.92 · FP est. 4%</span>
+        </div>
+      </div>
+
+      <div class="alert-item medium">
+        <div class="alert-header">
+          <span class="severity-badge medium">MEDIUM</span>
+          <span class="alert-time" id="time-4">14:28:55</span>
+        </div>
+        <div class="alert-summary">Worker helmet detected but no safety vest — partial PPE compliance violation.</div>
+        <div class="alert-action"><strong>Action:</strong> Verbal warning. Log compliance record.</div>
+        <div class="alert-meta">
+          <span class="alert-domain-tag">Construction</span>
+          <span class="alert-conf">conf 0.73 · FP est. 19%</span>
+        </div>
+      </div>
+
+      <div class="alert-item low">
+        <div class="alert-header">
+          <span class="severity-badge low">LOW</span>
+          <span class="alert-time" id="time-5">14:26:10</span>
+        </div>
+        <div class="alert-summary">Worker loitering near zone boundary — not yet in restricted area.</div>
+        <div class="alert-action"><strong>Action:</strong> Monitor. No immediate action required.</div>
+        <div class="alert-meta">
+          <span class="alert-domain-tag">Construction</span>
+          <span class="alert-conf">conf 0.61 · FP est. 34%</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- INCIDENT LOG -->
+  <div class="incident-panel">
+    <div class="panel-header">
+      <span class="panel-title">Incident Log</span>
+      <span style="font-size:11px; color:var(--text-muted)">Last 10 incidents</span>
+    </div>
+    <div class="incident-log">
+      <div class="log-row header">
+        <div>Time</div>
+        <div>Domain</div>
+        <div>AI Summary</div>
+        <div>Severity</div>
+      </div>
+      <div class="log-row">
+        <div class="log-time" id="lt-1">14:32:07</div>
+        <div class="log-domain">Construction</div>
+        <div class="log-summary">Worker without helmet near crane</div>
+        <div class="log-severity"><span class="severity-badge critical">CRITICAL</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time" id="lt-2">14:31:44</div>
+        <div class="log-domain">Construction</div>
+        <div class="log-summary">PPE vest missing in machinery zone</div>
+        <div class="log-severity"><span class="severity-badge high">HIGH</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time" id="lt-3">14:30:21</div>
+        <div class="log-domain">Construction</div>
+        <div class="log-summary">Unauthorized person at site entrance</div>
+        <div class="log-severity"><span class="severity-badge critical">CRITICAL</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time" id="lt-4">14:28:55</div>
+        <div class="log-domain">Construction</div>
+        <div class="log-summary">Partial PPE — missing vest only</div>
+        <div class="log-severity"><span class="severity-badge medium">MEDIUM</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time" id="lt-5">14:26:10</div>
+        <div class="log-domain">Construction</div>
+        <div class="log-summary">Worker near zone boundary</div>
+        <div class="log-severity"><span class="severity-badge low">LOW</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time">14:22:33</div>
+        <div class="log-domain">Elderly</div>
+        <div class="log-summary">Person stationary on floor 45s</div>
+        <div class="log-severity"><span class="severity-badge critical">CRITICAL</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time">14:19:08</div>
+        <div class="log-domain">School</div>
+        <div class="log-summary">Knife detected near school entrance</div>
+        <div class="log-severity"><span class="severity-badge critical">CRITICAL</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time">14:16:45</div>
+        <div class="log-domain">Public</div>
+        <div class="log-summary">Unattended bag 8 min in transit hub</div>
+        <div class="log-severity"><span class="severity-badge high">HIGH</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time">14:14:02</div>
+        <div class="log-domain">School</div>
+        <div class="log-summary">Crowd density spike near cafeteria</div>
+        <div class="log-severity"><span class="severity-badge medium">MEDIUM</span></div>
+      </div>
+      <div class="log-row">
+        <div class="log-time">14:11:19</div>
+        <div class="log-domain">Elderly</div>
+        <div class="log-summary">Resident out of bed zone at 2AM</div>
+        <div class="log-severity"><span class="severity-badge medium">MEDIUM</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI REASONING PANEL -->
+  <div class="reasoning-panel">
+    <div class="panel-header">
+      <span class="panel-title">AI Reasoning</span>
+      <span style="font-size:10px; color:var(--accent)">LLaMA 3.3 70B · Groq</span>
+    </div>
+    <div class="reasoning-content">
+      <div class="reasoning-label">Latest incident analysis</div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">Detection</div>
+        <div class="reasoning-value">person · no_helmet · conf 0.87 · zone: crane_proximity</div>
+      </div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">Context reasoning</div>
+        <div class="reasoning-value" id="reasoning-text">Worker without helmet detected within 2 meters of active crane operation. Duration: 12 seconds. Time of day indicates active construction hours. Crane proximity elevates risk from PPE violation to imminent danger category.</div>
+      </div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">Severity</div>
+        <div class="reasoning-value" style="color:var(--red); font-weight:600; font-size:14px;">CRITICAL</div>
+      </div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">Recommended action</div>
+        <div class="reasoning-value">Notify site supervisor immediately and halt crane operation until worker exits zone and equips helmet.</div>
+      </div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">False positive likelihood</div>
+        <div class="reasoning-value">6%
+          <div class="conf-bar"><div class="conf-fill" style="width: 94%; background: var(--green);"></div></div>
+        </div>
+      </div>
+
+      <div class="reasoning-box">
+        <div class="reasoning-title">Response time</div>
+        <div class="reasoning-value" style="color: var(--green);">1.4s · via Groq inference</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DOMAIN_DATA = {
+  'Construction': {
+    camLabel: 'CAM-02 · CONSTRUCTION SITE · ZONE A',
+    badge: 'CONSTRUCTION',
+    alertLabel: 'NO HELMET 0.87',
+    reasoning: 'Worker without helmet detected within 2 meters of active crane operation. Duration: 12 seconds. Crane proximity elevates risk to imminent danger category.',
+    critical: 3,
+  },
+  'School': {
+    camLabel: 'CAM-01 · SCHOOL ENTRANCE · MAIN GATE',
+    badge: 'SCHOOL',
+    alertLabel: 'KNIFE 0.82',
+    reasoning: 'Knife-type object detected near school entrance during dismissal hour at 3:08PM. Student density is high. Context: not kitchen environment — entrance zone at peak traffic.',
+    critical: 1,
+  },
+  'Elderly Care': {
+    camLabel: 'CAM-04 · CARE FACILITY · ROOM 12',
+    badge: 'ELDERLY CARE',
+    alertLabel: 'FALL 0.91',
+    reasoning: 'Resident detected in horizontal floor posture for 45 seconds. Nose landmark below hip level — fall detection positive. No movement detected. Immediate medical check required.',
+    critical: 2,
+  },
+  'Public Space': {
+    camLabel: 'CAM-07 · TRANSIT HUB · GATE B',
+    badge: 'PUBLIC SPACE',
+    alertLabel: 'UNAT. BAG 8:02',
+    reasoning: 'Unattended luggage detected at Gate B with no associated person within 4 meters for 8 minutes 2 seconds. High-traffic transit zone during peak hours. Security sweep warranted.',
+    critical: 1,
+  },
+  'All Domains': {
+    camLabel: 'MULTI-CAM VIEW · ALL DOMAINS ACTIVE',
+    badge: 'ALL DOMAINS',
+    alertLabel: 'ALERT ACTIVE',
+    reasoning: 'Multi-domain monitoring active. Highest priority: Construction CRITICAL (no helmet + crane proximity). Secondary: School HIGH (weapon at entrance). All domains processing in parallel.',
+    critical: 7,
+  }
+};
+
+function setDomain(btn, domain) {
+  document.querySelectorAll('.domain-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const d = DOMAIN_DATA[domain];
+  document.getElementById('cam-label').textContent = d.camLabel;
+  document.getElementById('cam-domain-badge').textContent = d.badge;
+  document.getElementById('main-alert-label').textContent = d.alertLabel;
+  document.getElementById('reasoning-text').textContent = d.reasoning;
+  document.getElementById('stat-critical').textContent = d.critical;
+}
+
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('en-GB', { hour12: false });
+  document.getElementById('clock').textContent = t;
+}
+
+function addSimulatedAlert() {
+  const critical = parseInt(document.getElementById('stat-critical').textContent);
+  const total = parseInt(document.getElementById('stat-total').textContent);
+  document.getElementById('stat-total').textContent = total + 1;
+}
+
+setInterval(updateClock, 1000);
+setInterval(addSimulatedAlert, 18000);
+updateClock();
+</script>
+</body>
+</html>
