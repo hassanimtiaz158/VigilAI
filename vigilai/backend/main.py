@@ -87,7 +87,7 @@ def health() -> dict:
     """Return system status."""
     return {
         "status": "ok",
-        "domain": detector.active_domain,
+        "active_domain": detector.active_domain,
         "incidents": len(incident_log),
         "active_clients": len(active_clients),
         "video_source": VIDEO_SOURCE,

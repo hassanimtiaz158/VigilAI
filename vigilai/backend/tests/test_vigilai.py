@@ -24,7 +24,7 @@ async def test_health_endpoint(client):
 
     data = response.json()
     assert "status" in data
-    assert "domain" in data
+    assert "active_domain" in data
     assert data["status"] == "ok"
 
 
