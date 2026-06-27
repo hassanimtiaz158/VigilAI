@@ -10,6 +10,11 @@ export default defineConfig({
       "/incidents": "http://localhost:8000",
       "/domain": "http://localhost:8000",
       "/health": "http://localhost:8000",
+      "/debug": "http://localhost:8000",
+      "/stream": {
+        target: "ws://localhost:8000",
+        ws: true,
+      },
     },
   },
 });

@@ -1,1 +1,6 @@
 specs/
+vigilai/venv/
+*.env
+.env
+vigilai/backend/.env
+vigilai/frontend/.env

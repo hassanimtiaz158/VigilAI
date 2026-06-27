@@ -167,8 +167,9 @@ def test_fall_detection_logic(fallen_landmarks, standing_landmarks):
 # 9. Reasoning cache
 # --------------------------------------------------------------------------- #
 def test_reasoning_cache():
-    """_reasoning_cache is a dict and starts empty."""
-    assert isinstance(_reasoning_cache, dict)
+    """_reasoning_cache is an OrderedDict and starts empty."""
+    from collections import OrderedDict
+    assert isinstance(_reasoning_cache, OrderedDict)
     assert len(_reasoning_cache) == 0
 
 

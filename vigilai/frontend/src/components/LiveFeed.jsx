@@ -1,3 +1,5 @@
+import { API_BASE } from "../config";
+
 const DOMAIN_LABELS = {
   construction: "CAM-02 · CONSTRUCTION SITE · ZONE A",
   school: "CAM-01 · SCHOOL · MAIN ENTRANCE",
@@ -22,7 +24,7 @@ export default function LiveFeed({ domain }) {
       <div style={{ position: "absolute", left: 0, right: 0, height: 1, background: "rgba(96,165,250,0.08)", animation: "scan 5s linear infinite" }} />
 
       <img
-        src="http://localhost:8000/video_feed"
+        src={`${API_BASE}/video_feed`}
         alt="Live camera feed"
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "slice" }}
       />

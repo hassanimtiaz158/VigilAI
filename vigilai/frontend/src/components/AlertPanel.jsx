@@ -1,9 +1,4 @@
-const SEVITY_STYLE = {
-  C: { bg: "rgba(244,63,63,0.2)", color: "#f87171", border: "var(--red-border)", left: "var(--red)", dim: "var(--red-dim)" },
-  H: { bg: "rgba(251,146,60,0.18)", color: "#fb923c", border: "var(--orange-border)", left: "var(--orange)", dim: "var(--orange-dim)" },
-  M: { bg: "rgba(251,191,36,0.16)", color: "#fbbf24", border: "var(--yellow-border)", left: "var(--yellow)", dim: "var(--yellow-dim)" },
-  L: { bg: "rgba(52,211,153,0.12)", color: "#34d399", border: "var(--green-border)", left: "var(--green)", dim: null },
-};
+import { SEV_COLORS } from "../utils/severity";
 
 function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -26,15 +21,14 @@ export default function AlertPanel({ incidents }) {
           <div style={{ textAlign: "center", padding: "30px 0", color: "var(--t3)", fontSize: 12 }}>No active alerts</div>
         ) : (
           latest.map((inc) => {
-            const key = (inc.severity || "M")[0];
-            const s = SEVITY_STYLE[key] || SEVITY_STYLE.M;
+            const s = SEV_COLORS[inc.severity] || SEV_COLORS.MEDIUM;
             return (
               <div
-                key={inc.id + inc.timestamp}
+                key={inc.id}
                 style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)", borderLeft: `2px solid ${s.left}`, background: s.dim || "transparent" }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.7px", padding: "2px 6px", borderRadius: 3, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.7px", padding: "2px 6px", borderRadius: 3, background: s.bg, color: s.fg, border: `1px solid ${s.border}` }}>
                     {inc.severity}
                   </span>
                   <span className="font-mono" style={{ fontSize: 10, color: "var(--t3)" }}>{formatTime(inc.timestamp)}</span>

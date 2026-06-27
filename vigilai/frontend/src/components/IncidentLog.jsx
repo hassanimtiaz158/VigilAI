@@ -1,10 +1,8 @@
+import { SEV_COLORS } from "../utils/severity";
+
 function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
-
-const SEV_BG = { CRITICAL: "rgba(244,63,63,0.2)", HIGH: "rgba(251,146,60,0.18)", MEDIUM: "rgba(251,191,36,0.16)", LOW: "rgba(52,211,153,0.12)" };
-const SEV_FG = { CRITICAL: "#f87171", HIGH: "#fb923c", MEDIUM: "#fbbf24", LOW: "#34d399" };
-const SEV_BRD = { CRITICAL: "var(--red-border)", HIGH: "var(--orange-border)", MEDIUM: "var(--yellow-border)", LOW: "var(--green-border)" };
 
 export default function IncidentLog({ incidents }) {
   return (
@@ -22,25 +20,28 @@ export default function IncidentLog({ incidents }) {
         {incidents.length === 0 ? (
           <div style={{ textAlign: "center", padding: "20px 0", color: "var(--t3)", fontSize: 11 }}>No incidents recorded</div>
         ) : (
-          incidents.map((inc) => (
-            <div
-              key={inc.id + inc.timestamp}
-              style={{ display: "grid", gridTemplateColumns: "70px 80px 1fr 72px", gap: 8, padding: "8px 14px", borderBottom: "1px solid var(--border)", fontSize: 11, alignItems: "center" }}
-              className="hover:bg-white/[0.015]"
-            >
-              <div className="font-mono" style={{ color: "var(--t3)" }}>{formatTime(inc.timestamp)}</div>
-              <div style={{ color: "var(--t2)" }}>{inc.domain}</div>
-              <div style={{ color: "var(--t1)", lineHeight: 1.3 }} className="truncate">{inc.summary}</div>
-              <div>
-                <span style={{
-                  fontSize: 8, fontWeight: 800, letterSpacing: "0.7px", padding: "2px 6px", borderRadius: 3, textAlign: "center", display: "inline-block",
-                  background: SEV_BG[inc.severity], color: SEV_FG[inc.severity], border: `1px solid ${SEV_BRD[inc.severity]}`,
-                }}>
-                  {inc.severity}
-                </span>
+          incidents.map((inc) => {
+            const s = SEV_COLORS[inc.severity] || SEV_COLORS.MEDIUM;
+            return (
+              <div
+                key={inc.id}
+                style={{ display: "grid", gridTemplateColumns: "70px 80px 1fr 72px", gap: 8, padding: "8px 14px", borderBottom: "1px solid var(--border)", fontSize: 11, alignItems: "center" }}
+                className="hover:bg-white/[0.015]"
+              >
+                <div className="font-mono" style={{ color: "var(--t3)" }}>{formatTime(inc.timestamp)}</div>
+                <div style={{ color: "var(--t2)" }}>{inc.domain}</div>
+                <div style={{ color: "var(--t1)", lineHeight: 1.3 }} className="truncate">{inc.summary}</div>
+                <div>
+                  <span style={{
+                    fontSize: 8, fontWeight: 800, letterSpacing: "0.7px", padding: "2px 6px", borderRadius: 3, textAlign: "center", display: "inline-block",
+                    background: s.bg, color: s.fg, border: `1px solid ${s.border}`,
+                  }}>
+                    {inc.severity}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

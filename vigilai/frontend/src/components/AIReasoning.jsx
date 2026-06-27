@@ -18,7 +18,7 @@ export default function AIReasoning({ incident }) {
               <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.7px", color: "var(--t3)", marginBottom: 4 }}>Detections</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
                 {incident.detections?.length ? incident.detections.map((d, i) => (
-                  <span key={i} style={{
+                  <span key={`${d.label}-${i}`} style={{
                     fontSize: 9, padding: "2px 7px", borderRadius: 3,
                     background: d.label?.includes("no_") || d.label === "fall_detected" ? "rgba(244,63,63,0.1)" : "rgba(96,165,250,0.1)",
                     border: d.label?.includes("no_") || d.label === "fall_detected" ? "1px solid var(--red-border)" : "1px solid rgba(96,165,250,0.25)",

@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import os
 import uuid
+import warnings
+from collections import OrderedDict
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -25,12 +27,33 @@ load_dotenv()
 # Groq client
 # --------------------------------------------------------------------------- #
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+if not GROQ_API_KEY:
+    warnings.warn(
+        "[VigilAI] GROQ_API_KEY not set — LLM reasoning disabled, "
+        "falling back to automated analysis."
+    )
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --------------------------------------------------------------------------- #
-# Cache — avoids calling LLM for duplicate detection patterns
+# Cache — avoids calling LLM for duplicate detection patterns (bounded)
 # --------------------------------------------------------------------------- #
-_reasoning_cache: dict[str, dict] = {}
+_MAX_CACHE_SIZE = 200
+_reasoning_cache: OrderedDict[str, dict] = OrderedDict()
+
+
+def _cache_get(key: str) -> dict | None:
+    if key in _reasoning_cache:
+        _reasoning_cache.move_to_end(key)
+        return _reasoning_cache[key]
+    return None
+
+
+def _cache_put(key: str, value: dict) -> None:
+    if key in _reasoning_cache:
+        _reasoning_cache.move_to_end(key)
+    _reasoning_cache[key] = value
+    while len(_reasoning_cache) > _MAX_CACHE_SIZE:
+        _reasoning_cache.popitem(last=False)
 
 # --------------------------------------------------------------------------- #
 # Constants
@@ -45,18 +68,63 @@ def _build_prompt(
     detection_summary: list[dict],
     duration_sec: float,
 ) -> str:
-    """Construct the user prompt sent to the LLM."""
+    """Construct the user prompt sent to the LLM.
+
+    The prompt is strictly anchored to the active domain so the LLM
+    cannot hallucinate references to other domains (e.g. saying
+    "school entrance" when the domain is "construction").
+    """
+    domain_contexts = {
+        "construction": (
+            "You are monitoring a construction site. Focus on PPE compliance, "
+            "missing helmets or safety vests, and worker safety hazards. "
+            "Construction workers require proper protective equipment at all times."
+        ),
+        "school": (
+            "You are monitoring a school campus. Focus on unauthorized persons, "
+            "weapons, crowd density, and student safety. Schools must maintain "
+            "a safe environment for children and staff."
+        ),
+        "elderly": (
+            "You are monitoring an elderly care facility. Focus on falls, "
+            "prolonged stillness, wandering, and resident wellbeing. "
+            "Elderly residents are vulnerable and require prompt response."
+        ),
+        "child": (
+            "You are monitoring child safety. Focus on unattended children, "
+            "falls, restricted zone entry, and children near roads. "
+            "Children require faster response than adults."
+        ),
+        "public": (
+            "You are monitoring a public space. Focus on unattended bags, "
+            "crowd anomalies, loitering, and suspicious activity. "
+            "Public areas require vigilance for potential threats."
+        ),
+    }
+
+    context = domain_contexts.get(
+        domain,
+        f"You are monitoring a {domain} environment.",
+    )
+
     return (
-        "You are an AI safety analyst. Analyze this incident and respond "
-        "ONLY with valid JSON.\n\n"
-        f"Domain: {domain}\n"
-        f"Detections: {json.dumps(detection_summary)}\n"
-        f"Duration: {duration_sec:.1f} seconds\n\n"
-        "Return exactly this JSON structure:\n"
+        f"DOMAIN: {domain.upper()}\n"
+        f"{context}\n"
+        f"Analyze ONLY in the context of {domain}. "
+        f"Never reference any other domain.\n\n"
+        f"DETECTIONS: {json.dumps(detection_summary)}\n"
+        f"DURATION: {duration_sec:.1f} seconds\n\n"
+        f"RULES:\n"
+        f"- Describe what is happening specifically in the {domain} context.\n"
+        f"- Do NOT mention any location or context from a different domain.\n"
+        f"- Severity: CRITICAL if immediate danger, HIGH if risk, "
+        f"MEDIUM if caution needed, LOW if informational only.\n"
+        f"- False positive %: how likely this is a misclassification.\n\n"
+        "Return ONLY valid JSON:\n"
         "{\n"
         '  "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",\n'
-        '  "summary": "one sentence describing what is happening",\n'
-        '  "recommended_action": "one sentence describing what should be done",\n'
+        '  "summary": "one sentence describing the incident in the domain context",\n'
+        '  "recommended_action": "one sentence for what should be done",\n'
         '  "false_positive_pct": integer 0-100\n'
         "}"
     )
@@ -132,13 +200,13 @@ def analyze_incident(
     JSON response, caches the result, and returns a fully constructed
     Incident.
     """
-    # --- Build cache key --------------------------------------------------
+    # --- Build cache key (BUG 5 fix: domain is always included) ----------
     cache_key = (
         f"{domain}:{sorted([d.label for d in detections])}:"
         f"{int(duration_sec / 10) * 10}"
     )
 
-    cached = _reasoning_cache.get(cache_key)
+    cached = _cache_get(cache_key)
     if cached is not None:
         # Validate cached values before constructing Incident
         severity = cached["severity"]
@@ -212,7 +280,7 @@ def analyze_incident(
     result["false_positive_pct"] = max(0, min(100, result["false_positive_pct"]))
 
     # --- Cache the validated result ---------------------------------------
-    _reasoning_cache[cache_key] = result
+    _cache_put(cache_key, result)
 
     # --- Return full Incident ---------------------------------------------
     return Incident(

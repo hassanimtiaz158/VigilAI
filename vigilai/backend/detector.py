@@ -18,6 +18,18 @@ from typing import Tuple
 import cv2
 import mediapipe as mp
 import numpy as np
+import torch
+
+# Patch torch.load for PyTorch 2.6+ compatibility with ultralytics 8.x
+_original_torch_load = torch.load
+
+def _patched_torch_load(*args, **kwargs):
+    if "weights_only" not in kwargs:
+        kwargs["weights_only"] = False
+    return _original_torch_load(*args, **kwargs)
+
+torch.load = _patched_torch_load
+
 from ultralytics import YOLO
 
 from domain_rules import DOMAIN_RULES
@@ -97,6 +109,8 @@ class SafeWatchDetector:
         if frame is None or frame.size == 0:
             return frame, []
 
+        frame = frame.copy()
+
         h, w = frame.shape[:2]
         rules = DOMAIN_RULES.get(self.active_domain, {})
         target_labels: list[str] = rules.get("target_labels", [])
@@ -175,7 +189,10 @@ class SafeWatchDetector:
                 )
 
         # --------------------- MediaPipe Pose -------------------------
-        if "fall" in pose_checks:
+        # For 'child' domain, run pose always (pose_always flag).
+        # For other domains, only run if 'fall' is in pose_checks.
+        run_pose = "fall" in pose_checks or rules.get("pose_always", False)
+        if run_pose:
             mp_image = mp.Image(
                 image_format=mp.ImageFormat.SRGB, data=frame
             )

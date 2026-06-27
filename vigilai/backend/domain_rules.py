@@ -26,6 +26,7 @@ DOMAIN_RULES: dict[str, dict] = {
         "forbidden_labels": ["knife", "scissors"],
         "confidence_threshold": 0.50,
         "pose_checks": ["running"],
+        "alert_only_forbidden": True,
         "zone_map": {
             "entrance": "high_risk",
             "cafeteria": "medium_risk",
@@ -41,6 +42,7 @@ DOMAIN_RULES: dict[str, dict] = {
         "confidence_threshold": 0.60,
         "pose_checks": ["fall", "prolonged_stillness"],
         "stillness_threshold_sec": 30,
+        "alert_only_pose": True,
         "zone_map": {
             "floor": "critical",
             "bed": "low",
@@ -54,6 +56,7 @@ DOMAIN_RULES: dict[str, dict] = {
     "construction": {
         "target_labels": ["person", "helmet", "safety vest"],
         "missing_ppe_trigger": True,
+        "ppe_labels": ["helmet", "safety vest"],
         "confidence_threshold": 0.55,
         "proximity_zone": "machinery_zone",
         "zone_map": {
@@ -64,12 +67,29 @@ DOMAIN_RULES: dict[str, dict] = {
         },
     },
     # ------------------------------------------------------------------ #
+    #  CHILD SAFETY
+    # ------------------------------------------------------------------ #
+    "child": {
+        "target_labels": ["person", "backpack"],
+        "confidence_threshold": 0.55,
+        "pose_checks": ["fall", "prolonged_stillness"],
+        "stillness_threshold_sec": 20,
+        "restricted_zone_alert": True,
+        "pose_always": True,
+        "zone_map": {
+            "playground": "low",
+            "road": "critical",
+            "restricted": "high_risk",
+        },
+    },
+    # ------------------------------------------------------------------ #
     #  PUBLIC SPACE
     # ------------------------------------------------------------------ #
     "public": {
         "target_labels": ["suitcase", "backpack", "handbag", "person"],
         "unattended_bag_threshold_sec": 300,
         "confidence_threshold": 0.50,
+        "alert_only_bags": True,
         "zone_map": {
             "transit_hub": "high_risk",
             "open_space": "medium_risk",
@@ -78,3 +98,51 @@ DOMAIN_RULES: dict[str, dict] = {
         },
     },
 }
+
+
+def should_trigger_alert(detections: list, domain: str) -> bool:
+    """Return True only if the detections warrant an alert for this domain.
+
+    Prevents generic 'person' detections from generating noise alerts.
+    Each domain has specific alert-worthy conditions:
+      - construction: person WITHOUT helmet or safety vest
+      - school: forbidden objects (knife, scissors) or fall
+      - elderly: fall_detected only
+      - child: fall_detected or person in restricted zone
+      - public: unattended bags only (suitcase, backpack, handbag)
+    """
+    if not detections:
+        return False
+
+    labels = [d.label for d in detections]
+    zones = [d.zone for d in detections]
+
+    if domain == "construction":
+        has_person = "person" in labels
+        if not has_person:
+            return False
+        has_helmet = "helmet" in labels
+        has_vest = "safety vest" in labels
+        if not has_helmet and not has_vest:
+            return False
+        return not (has_helmet and has_vest)
+
+    if domain == "school":
+        forbidden = ["knife", "scissors"]
+        return any(f in labels for f in forbidden) or "fall_detected" in labels
+
+    if domain == "elderly":
+        return "fall_detected" in labels
+
+    if domain == "child":
+        if "fall_detected" in labels:
+            return True
+        has_person = "person" in labels
+        in_restricted = "road" in zones or "restricted" in zones
+        return has_person and in_restricted
+
+    if domain == "public":
+        bags = ["suitcase", "backpack", "handbag"]
+        return any(b in labels for b in bags)
+
+    return False

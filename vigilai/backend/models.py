@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 Severity = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
-DomainLiteral = Literal["school", "elderly", "construction", "public"]
+DomainLiteral = Literal["school", "elderly", "construction", "public", "child"]
 
 
 class Detection(BaseModel):
