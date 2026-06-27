@@ -49,6 +49,11 @@ body {
   50% { opacity: .4; transform: scale(.7); }
 }
 
+@keyframes pulse-border {
+  0%, 100% { border-color: #ef4444; box-shadow: 0 -4px 24px rgba(220, 38, 38, 0.4); }
+  50% { border-color: #fca5a5; box-shadow: 0 -4px 32px rgba(220, 38, 38, 0.7); }
+}
+
 @keyframes scan {
   0% { top: 0; }
   100% { top: 100%; }

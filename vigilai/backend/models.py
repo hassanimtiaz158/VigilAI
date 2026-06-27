@@ -73,3 +73,14 @@ class DomainSwitch(BaseModel):
     """Request body for switching the active detection domain."""
 
     domain: DomainLiteral
+
+
+class TestAlertBody(BaseModel):
+    """Request body for POST /test-alert."""
+
+    message: str = Field(
+        default="VigilAI test alert — system check",
+        min_length=1,
+        max_length=500,
+        description="Test alert message to send",
+    )

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import LiveFeed from "./LiveFeed";
 import AlertPanel from "./AlertPanel";
 import IncidentLog from "./IncidentLog";
+import NotificationLog from "./NotificationLog";
 import AIReasoning from "./AIReasoning";
 import StatsBar from "./StatsBar";
 import { useWebSocket } from "../hooks/useWebSocket";
@@ -16,14 +17,14 @@ const DOMAIN_META = {
   public: { icon: "\uD83C\uDF06", label: "Public Space", color: "#fbbf24" },
 };
 
-export default function Dashboard() {
+export default function Dashboard({ onCriticalIncident }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeDomain, setActiveDomain] = useState(
     location.state?.selectedDomain || "construction"
   );
   const [clock, setClock] = useState("--:--:--");
-  const { incidents, connected } = useWebSocket(WS_URL);
+  const { incidents, connected, latestCritical } = useWebSocket(WS_URL);
 
   const domainMeta = DOMAIN_META[activeDomain] || DOMAIN_META.construction;
 
@@ -35,6 +36,12 @@ export default function Dashboard() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (latestCritical) {
+      onCriticalIncident?.(latestCritical);
+    }
+  }, [latestCritical, onCriticalIncident]);
 
   const handleSwitchDomain = useCallback(() => {
     navigate("/#domains");
@@ -152,10 +159,11 @@ export default function Dashboard() {
 
       {/* Main grid: 1fr 320px */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", flex: 1, overflow: "hidden" }}>
-        {/* Left column: camera (290px fixed) + incident log (fill) */}
+        {/* Left column: camera (290px fixed) + incident log (fill) + notification log */}
         <div style={{ borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <LiveFeed domain={activeDomain} />
           <IncidentLog incidents={incidents} />
+          <NotificationLog />
         </div>
 
         {/* Right column: alerts (max 250px) + reasoning (fill) */}
